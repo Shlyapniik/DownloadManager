@@ -61,7 +61,8 @@ public partial class MainViewModel : ObservableObject
             FileName = fileName,
             Url = url,
             FilePath = filePath,
-            Status = "Downloading"
+            Status = "Downloading",
+            IsDownloading = true
         };
 
         Downloads.Add(download);
@@ -85,9 +86,17 @@ public partial class MainViewModel : ObservableObject
                 download.CancellationTokenSource.Token);
 
             download.Status = "Completed";
+            download.IsDownloading = false;
         }
         catch (OperationCanceledException)
         {
+            if (download.IsPaused)
+            {
+                download.Status = "Paused";
+                return;
+            }
+
+            download.IsDownloading = false;
             download.Status = "Cancelled";
 
             if (File.Exists(filePath))
@@ -95,10 +104,12 @@ public partial class MainViewModel : ObservableObject
         }
         catch (HttpRequestException ex)
         {
+            download.IsDownloading = false;
             download.Status = $"Failed: {ex.Message}";
         }
         catch (Exception ex)
         {
+            download.IsDownloading = false;
             download.Status = $"Failed: {ex.Message}";
         }
         finally
@@ -113,8 +124,82 @@ public partial class MainViewModel : ObservableObject
         if (download.Status != "Downloading")
             return;
 
+        if (!download.IsDownloading)
+            return;
+
         download.Status = "Cancelling...";
 
         download.CancellationTokenSource.Cancel();
+    }
+
+    [RelayCommand]
+    private void PauseDownload(DownloadItem download)
+    {
+        if (download.Status != "Downloading")
+            return;
+
+        download.IsPaused = true;
+        download.IsDownloading = false;
+        download.Status = "Paused";
+
+        download.CancellationTokenSource.Cancel();
+    }
+
+    [RelayCommand]
+    private async Task ResumeDownload(DownloadItem download)
+    {
+        if (!download.IsPaused || download.IsDownloading)
+            return;
+
+        download.IsPaused = false;
+        download.IsDownloading = true;
+        download.Status = "Downloading";
+
+        download.CancellationTokenSource.Dispose();
+        download.CancellationTokenSource = new CancellationTokenSource();
+
+        var progress = new Progress<DownloadProgress>(value =>
+        {
+            download.TotalBytes = value.TotalBytes;
+            download.DownloadedBytes = value.DownloadedBytes;
+            download.Progress = value.Percentage;
+            download.Speed = value.Speed;
+        });
+
+        try
+        {
+            await _downloadService.DownloadAsync(
+                download.Url,
+                download.FilePath,
+                progress,
+                download.CancellationTokenSource.Token);
+
+            download.Status = "Completed";
+            download.IsDownloading = false;
+        }
+        catch (OperationCanceledException)
+        {
+            if (download.IsPaused)
+            {
+                download.Status = "Paused";
+                return;
+            }
+
+            download.IsDownloading = false;
+            download.Status = "Cancelled";
+
+            if (File.Exists(download.FilePath))
+                File.Delete(download.FilePath);
+        }
+        catch (HttpRequestException ex)
+        {
+            download.IsDownloading = false;
+            download.Status = $"Failed: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            download.IsDownloading = false;
+            download.Status = $"Failed: {ex.Message}";
+        }
     }
 }

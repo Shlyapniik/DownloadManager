@@ -28,5 +28,13 @@ public partial class DownloadItem : ObservableObject
     [ObservableProperty]
     private string status = "Pending";
 
-    public CancellationTokenSource CancellationTokenSource { get; } = new();
+    [ObservableProperty]
+    public bool isPaused;
+    
+    [ObservableProperty]
+    private bool isDownloading;
+
+    public CancellationTokenSource CancellationTokenSource { get; set; } = new();
+
+    
 }

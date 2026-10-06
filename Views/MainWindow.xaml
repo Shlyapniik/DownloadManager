@@ -62,6 +62,8 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
+                <!-- Заголовок списка -->
+
                 <Border Grid.Row="0"
                         Background="#EEEEEE"
                         Padding="15">
@@ -71,6 +73,8 @@
                                FontWeight="SemiBold"/>
 
                 </Border>
+
+                <!-- Элементы загрузок -->
 
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto">
@@ -82,10 +86,10 @@
                             <DataTemplate>
 
                                 <Border Margin="10"
-            Padding="15"
-            BorderBrush="#DDDDDD"
-            BorderThickness="1"
-            CornerRadius="5">
+                                        Padding="15"
+                                        BorderBrush="#DDDDDD"
+                                        BorderThickness="1"
+                                        CornerRadius="5">
 
                                     <Grid>
 
@@ -96,51 +100,84 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
+                                        <!-- Имя файла -->
+
                                         <TextBlock Grid.Row="0"
-                       Text="{Binding FileName}"
-                       FontSize="16"
-                       FontWeight="SemiBold"/>
+                                                   Text="{Binding FileName}"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"/>
+
+                                        <!-- URL -->
 
                                         <TextBlock Grid.Row="1"
-                       Margin="0,5,0,10"
-                       Text="{Binding Url}"
-                       Foreground="Gray"
-                       TextTrimming="CharacterEllipsis"/>
+                                                   Margin="0,5,0,10"
+                                                   Text="{Binding Url}"
+                                                   Foreground="Gray"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- Прогресс -->
 
                                         <ProgressBar Grid.Row="2"
-                         Height="20"
-                         Minimum="0"
-                         Maximum="100"
-                         Value="{Binding Progress}"/>
+                                                     Height="20"
+                                                     Minimum="0"
+                                                     Maximum="100"
+                                                     Value="{Binding Progress}"/>
+
+                                        <!-- Информация и кнопки -->
 
                                         <Grid Grid.Row="3"
-      Margin="0,8,0,0">
+                                              Margin="0,8,0,0">
+
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
+                                            <!-- Статус -->
+
                                             <TextBlock Grid.Column="0"
-               VerticalAlignment="Center"
-               Text="{Binding Status}"/>
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Status}"/>
+
+                                            <!-- Прогресс и скорость -->
 
                                             <StackPanel Grid.Column="1"
-                Orientation="Horizontal">
+                                                        Orientation="Horizontal">
+
                                                 <TextBlock Margin="10,0,0,0"
-                   Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
+                                                           Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
 
                                                 <TextBlock Margin="15,0,0,0"
-                   Text="{Binding Speed, StringFormat={}{0:F1} B/s}"/>
+                                                           Text="{Binding Speed, StringFormat={}{0:F1} B/s}"/>
+
                                             </StackPanel>
 
-                                            <Button Grid.Column="2"
-            Margin="15,0,0,0"
-            Padding="12,5"
-            Content="Cancel"
-            Command="{Binding DataContext.CancelDownloadCommand,
-                              RelativeSource={RelativeSource AncestorType=Window}}"
-            CommandParameter="{Binding}"/>
+                                            <!-- Управление загрузкой -->
+
+                                            <StackPanel Grid.Column="2"
+                                                        Margin="15,0,0,0"
+                                                        Orientation="Horizontal">
+
+                                                <Button Padding="12,5"
+                                                        Content="Pause"
+                                                        Command="{Binding DataContext.PauseDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+
+                                                <Button Margin="5,0,0,0"
+                                                        Padding="12,5"
+                                                        Content="Resume"
+                                                        Command="{Binding DataContext.ResumeDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+
+                                                <Button Margin="5,0,0,0"
+                                                        Padding="12,5"
+                                                        Content="Cancel"
+                                                        Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+
+                                            </StackPanel>
+
                                         </Grid>
 
                                     </Grid>
