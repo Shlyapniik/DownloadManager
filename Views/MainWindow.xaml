@@ -143,13 +143,25 @@
                                             <!-- Прогресс и скорость -->
 
                                             <StackPanel Grid.Column="1"
-                                                        Orientation="Horizontal">
+                                                Orientation="Horizontal">
 
                                                 <TextBlock Margin="10,0,0,0"
-                                                           Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
+                                                    Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
 
                                                 <TextBlock Margin="15,0,0,0"
-                                                           Text="{Binding Speed, StringFormat={}{0:F1} B/s}"/>
+                                                    Text="{Binding DownloadedSizeText}"/>
+
+                                                <TextBlock Margin="5,0,0,0"
+                                                    Text="/"/>
+
+                                                <TextBlock Margin="5,0,0,0"
+                                                    Text="{Binding TotalSizeText}"/>
+
+                                                <TextBlock Margin="15,0,0,0"
+                                                    Text="{Binding SpeedText}"/>
+
+                                                <TextBlock Margin="15,0,0,0"
+                                                    Text="{Binding RemainingTimeText}"/>
 
                                             </StackPanel>
 
@@ -174,6 +186,12 @@
                                                         Padding="12,5"
                                                         Content="Cancel"
                                                         Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+
+                                                <Button Margin="5,0,0,0"
+                                                        Padding="12,5"
+                                                        Content="Retry"
+                                                        Command="{Binding DataContext.RetryDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"/>
 
                                             </StackPanel>

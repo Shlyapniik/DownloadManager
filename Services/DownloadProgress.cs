@@ -4,4 +4,5 @@ public record DownloadProgress(
     long TotalBytes,
     long DownloadedBytes,
     double Percentage,
-    double Speed);
+    double Speed,
+    TimeSpan? RemainingTime);

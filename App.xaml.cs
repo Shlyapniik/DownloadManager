@@ -19,6 +19,8 @@ public partial class App : Application
 
         services.AddSingleton<DownloadService>();
 
+        services.AddSingleton<DownloadRetryService>();
+
         services.AddSingleton<MainViewModel>();
 
         services.AddSingleton<MainWindow>();

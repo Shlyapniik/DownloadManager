@@ -33,9 +33,10 @@ public class DownloadService
 
         if (existingBytes > 0)
         {
-            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(
-                existingBytes,
-                null);
+            request.Headers.Range =
+                new System.Net.Http.Headers.RangeHeaderValue(
+                    existingBytes,
+                    null);
         }
 
         using var response = await _httpClient.SendAsync(
@@ -76,7 +77,10 @@ public class DownloadService
 
         long downloadedBytes = existingBytes;
 
+        long lastMeasuredBytes = downloadedBytes;
+
         var stopwatch = Stopwatch.StartNew();
+        var lastMeasurement = stopwatch.Elapsed;
 
         while (true)
         {
@@ -93,22 +97,55 @@ public class DownloadService
 
             downloadedBytes += bytesRead;
 
-            var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+            var now = stopwatch.Elapsed;
+            var elapsed = now - lastMeasurement;
 
-            var speed = elapsedSeconds > 0
-                ? (downloadedBytes - existingBytes) / elapsedSeconds
-                : 0;
+            if (elapsed.TotalMilliseconds >= 500)
+            {
+                var bytesSinceLastMeasurement =
+                    downloadedBytes - lastMeasuredBytes;
 
-            var percentage = totalBytes > 0
-                ? (double)downloadedBytes / totalBytes * 100
-                : 0;
+                var speed =
+                    bytesSinceLastMeasurement /
+                    elapsed.TotalSeconds;
 
+                TimeSpan? remainingTime = null;
+
+                if (totalBytes > 0 && speed > 0)
+                {
+                    var remainingBytes =
+                        totalBytes - downloadedBytes;
+
+                    remainingTime = TimeSpan.FromSeconds(
+                        remainingBytes / speed);
+                }
+
+                var percentage = totalBytes > 0
+                    ? (double)downloadedBytes / totalBytes * 100
+                    : 0;
+
+                progress.Report(
+                    new DownloadProgress(
+                        totalBytes,
+                        downloadedBytes,
+                        percentage,
+                        speed,
+                        remainingTime));
+
+                lastMeasuredBytes = downloadedBytes;
+                lastMeasurement = now;
+            }
+        }
+
+        if (totalBytes > 0)
+        {
             progress.Report(
                 new DownloadProgress(
                     totalBytes,
                     downloadedBytes,
-                    percentage,
-                    speed));
+                    100,
+                    0,
+                    TimeSpan.Zero));
         }
     }
 }
