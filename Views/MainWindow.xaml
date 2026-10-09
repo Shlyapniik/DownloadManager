@@ -128,73 +128,90 @@
                                         <Grid Grid.Row="3"
                                               Margin="0,8,0,0">
 
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
 
                                             <!-- Статус -->
 
-                                            <TextBlock Grid.Column="0"
-                                                       VerticalAlignment="Center"
-                                                       Text="{Binding Status}"/>
+                                            <TextBlock Grid.Row="0"
+                                                       Text="{Binding StatusText}"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,8"/>
 
-                                            <!-- Прогресс и скорость -->
+                                            <!-- Информация и управление -->
 
-                                            <StackPanel Grid.Column="1"
-                                                Orientation="Horizontal">
+                                            <Grid Grid.Row="1">
 
-                                                <TextBlock Margin="10,0,0,0"
-                                                    Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
 
-                                                <TextBlock Margin="15,0,0,0"
-                                                    Text="{Binding DownloadedSizeText}"/>
+                                                <!-- Прогресс и скорость -->
 
-                                                <TextBlock Margin="5,0,0,0"
-                                                    Text="/"/>
+                                                <StackPanel Grid.Column="0"
+                                                            Orientation="Horizontal">
 
-                                                <TextBlock Margin="5,0,0,0"
-                                                    Text="{Binding TotalSizeText}"/>
+                                                    <TextBlock Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
 
-                                                <TextBlock Margin="15,0,0,0"
-                                                    Text="{Binding SpeedText}"/>
+                                                    <TextBlock Margin="15,0,0,0"
+                                                               Text="{Binding DownloadedSizeText}"/>
 
-                                                <TextBlock Margin="15,0,0,0"
-                                                    Text="{Binding RemainingTimeText}"/>
+                                                    <TextBlock Margin="5,0,0,0"
+                                                               Text="/"/>
 
-                                            </StackPanel>
+                                                    <TextBlock Margin="5,0,0,0"
+                                                               Text="{Binding TotalSizeText}"/>
 
-                                            <!-- Управление загрузкой -->
+                                                    <TextBlock Margin="15,0,0,0"
+                                                               Text="{Binding SpeedText}"/>
 
-                                            <StackPanel Grid.Column="2"
-                                                        Margin="15,0,0,0"
-                                                        Orientation="Horizontal">
+                                                    <TextBlock Margin="15,0,0,0"
+                                                               Text="{Binding RemainingTimeText}"/>
 
-                                                <Button Padding="12,5"
-                                                        Content="Pause"
-                                                        Command="{Binding DataContext.PauseDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"/>
+                                                </StackPanel>
 
-                                                <Button Margin="5,0,0,0"
-                                                        Padding="12,5"
-                                                        Content="Resume"
-                                                        Command="{Binding DataContext.ResumeDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"/>
+                                                <!-- Управление загрузкой -->
 
-                                                <Button Margin="5,0,0,0"
-                                                        Padding="12,5"
-                                                        Content="Cancel"
-                                                        Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"/>
+                                                <StackPanel Grid.Column="2"
+                                                            Margin="15,0,0,0"
+                                                            Orientation="Horizontal">
 
-                                                <Button Margin="5,0,0,0"
-                                                        Padding="12,5"
-                                                        Content="Retry"
-                                                        Command="{Binding DataContext.RetryDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"/>
+                                                    <Button Padding="12,5"
+                                                            Content="Pause"
+                                                            Command="{Binding DataContext.PauseDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
 
-                                            </StackPanel>
+                                                    <Button Margin="5,0,0,0"
+                                                            Padding="12,5"
+                                                            Content="Resume"
+                                                            Command="{Binding DataContext.ResumeDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
+
+                                                    <Button Margin="5,0,0,0"
+                                                            Padding="12,5"
+                                                            Content="Cancel"
+                                                            Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
+
+                                                    <Button Margin="5,0,0,0"
+                                                            Padding="12,5"
+                                                            Content="Retry"
+                                                            Command="{Binding DataContext.RetryDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
+
+                                                    <Button
+                                                            Content="Delete"
+                                                            Command="{Binding DataContext.DeleteDownloadCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Margin="5,0,0,0"/>
+
+                                                </StackPanel>
+
+                                            </Grid>
 
                                         </Grid>
 

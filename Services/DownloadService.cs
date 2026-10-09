@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -8,10 +9,14 @@ namespace DownloadManager.Services;
 public class DownloadService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<DownloadService> _logger;
 
-    public DownloadService(HttpClient httpClient)
+    public DownloadService(
+        HttpClient httpClient,
+        ILogger<DownloadService> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
     }
 
     public async Task DownloadAsync(
@@ -20,11 +25,23 @@ public class DownloadService
         IProgress<DownloadProgress> progress,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation(
+            "Starting download: {Url} -> {FilePath}",
+            url,
+            filePath);
+
         long existingBytes = 0;
 
         if (File.Exists(filePath))
         {
             existingBytes = new FileInfo(filePath).Length;
+
+            if (existingBytes > 0)
+            {
+                _logger.LogInformation(
+                    "Existing partial file found: {Bytes} bytes",
+                    existingBytes);
+            }
         }
 
         using var request = new HttpRequestMessage(
@@ -33,6 +50,10 @@ public class DownloadService
 
         if (existingBytes > 0)
         {
+            _logger.LogInformation(
+                 "Resuming download from byte {ExistingBytes}",
+                 existingBytes);
+
             request.Headers.Range =
                 new System.Net.Http.Headers.RangeHeaderValue(
                     existingBytes,
@@ -147,5 +168,9 @@ public class DownloadService
                     0,
                     TimeSpan.Zero));
         }
+
+        _logger.LogInformation(
+            "Download completed: {FilePath}",
+            filePath);
     }
 }

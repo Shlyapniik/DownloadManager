@@ -4,6 +4,8 @@ namespace DownloadManager.Models;
 
 public partial class DownloadItem : ObservableObject
 {
+    public int Id { get; set; }
+
     [ObservableProperty]
     private string fileName = string.Empty;
 
@@ -26,7 +28,10 @@ public partial class DownloadItem : ObservableObject
     private double speed;
 
     [ObservableProperty]
-    private string status = "Pending";
+    private DownloadStatus status = DownloadStatus.Pending;
+
+    [ObservableProperty]
+    private string errorMessage = string.Empty;
 
     [ObservableProperty]
     private bool isPaused;
@@ -36,6 +41,8 @@ public partial class DownloadItem : ObservableObject
 
     [ObservableProperty]
     private bool canRetry;
+
+    public DateTime CreatedAt { get; set; }
 
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
 
@@ -57,12 +64,33 @@ public partial class DownloadItem : ObservableObject
             if (TotalBytes <= 0 || Speed <= 0)
                 return "Unknown";
 
-            var remainingBytes = TotalBytes - DownloadedBytes;
+            var remainingBytes =
+                TotalBytes - DownloadedBytes;
 
-            var seconds = remainingBytes / Speed;
+            var seconds =
+                remainingBytes / Speed;
 
-            return FormatTime(TimeSpan.FromSeconds(seconds));
+            return FormatTime(
+                TimeSpan.FromSeconds(seconds));
         }
+    }
+
+    public string StatusText => Status switch
+    {
+        DownloadStatus.Pending => "Pending",
+        DownloadStatus.Queued => "Queued",
+        DownloadStatus.Downloading => "Downloading",
+        DownloadStatus.Paused => "Paused",
+        DownloadStatus.Completed => "Completed",
+        DownloadStatus.Cancelled => "Cancelled",
+        DownloadStatus.Failed => "Failed",
+        DownloadStatus.Retrying => "Retrying",
+        _ => "Unknown"
+    };
+
+    partial void OnStatusChanged(DownloadStatus value)
+    {
+        OnPropertyChanged(nameof(StatusText));
     }
 
     partial void OnDownloadedBytesChanged(long value)
@@ -81,6 +109,14 @@ public partial class DownloadItem : ObservableObject
     {
         OnPropertyChanged(nameof(SpeedText));
         OnPropertyChanged(nameof(RemainingTimeText));
+    }
+
+    public void ResetProgress()
+    {
+        TotalBytes = 0;
+        DownloadedBytes = 0;
+        Progress = 0;
+        Speed = 0;
     }
 
     private static string FormatBytes(long bytes)
@@ -110,13 +146,5 @@ public partial class DownloadItem : ObservableObject
             return time.ToString(@"m\:ss");
 
         return $"{Math.Max(0, (int)time.TotalSeconds)} sec";
-    }
-
-    public void ResetProgress()
-    {
-        TotalBytes = 0;
-        DownloadedBytes = 0;
-        Progress = 0;
-        Speed = 0;
     }
 }
