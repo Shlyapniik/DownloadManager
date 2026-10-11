@@ -18,6 +18,8 @@ public partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _downloadSemaphore = new(3);
     private readonly ILogger<MainViewModel> _logger;
 
+    private readonly Dictionary<DownloadItem, Task> _downloadTasks = new();
+
     [ObservableProperty]
     private string title = "Download Manager";
 
@@ -99,7 +101,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-
     [RelayCommand]
     private async Task AddDownload()
     {
@@ -165,44 +166,23 @@ public partial class MainViewModel : ObservableObject
             url,
             filePath);
 
-        _ = StartDownloadAsync(download);
+        StartDownload(download);
     }
 
-    private string GetUniqueFilePath(
-        string directory,
-        string fileName)
+    private void StartDownload(
+        DownloadItem download)
     {
-        var nameWithoutExtension =
-            Path.GetFileNameWithoutExtension(fileName);
+        var task = StartDownloadAsync(download);
 
-        var extension =
-            Path.GetExtension(fileName);
+        _downloadTasks[download] = task;
 
-        var filePath = Path.Combine(directory, fileName);
-
-        var counter = 1;
-
-        while (
-            File.Exists(filePath) ||
-            Downloads.Any(d =>
-                string.Equals(
-                    d.FilePath,
-                    filePath,
-                    StringComparison.OrdinalIgnoreCase)))
-        {
-            var uniqueFileName =
-                $"{nameWithoutExtension} ({counter}){extension}";
-
-            filePath = Path.Combine(
-                directory,
-                uniqueFileName);
-
-            counter++;
-        }
-
-        return filePath;
+        _ = task.ContinueWith(
+            _ =>
+            {
+                _downloadTasks.Remove(download);
+            },
+            TaskScheduler.FromCurrentSynchronizationContext());
     }
-
 
     private async Task StartDownloadAsync(
         DownloadItem download)
@@ -214,11 +194,36 @@ public partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            download.IsDownloading = false;
+            download.Status =
+                DownloadStatus.Cancelled;
+
+            download.ResetProgress();
+
+            await SaveDownloadAsync(download);
+
             return;
         }
 
         try
         {
+            // Пользователь мог отменить загрузку,
+            // пока она ждала свободный слот.
+            if (download.CancellationTokenSource
+                .IsCancellationRequested)
+            {
+                download.Status =
+                    DownloadStatus.Cancelled;
+
+                download.IsDownloading = false;
+
+                download.ResetProgress();
+
+                await SaveDownloadAsync(download);
+
+                return;
+            }
+
             download.IsDownloading = true;
             download.Status =
                 DownloadStatus.Downloading;
@@ -241,8 +246,13 @@ public partial class MainViewModel : ObservableObject
                         value.Speed;
                 });
 
+            using var progressSaveCts =
+                new CancellationTokenSource();
+
             var progressSaveTask =
-                SaveProgressLoopAsync(download);
+                SaveProgressLoopAsync(
+                    download,
+                    progressSaveCts.Token);
 
             try
             {
@@ -260,13 +270,30 @@ public partial class MainViewModel : ObservableObject
             }
             finally
             {
-                await progressSaveTask;
+                progressSaveCts.Cancel();
+
+                try
+                {
+                    await progressSaveTask;
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
 
+            download.DownloadedBytes =
+                download.TotalBytes > 0
+                    ? download.TotalBytes
+                    : File.Exists(download.FilePath)
+                        ? new FileInfo(download.FilePath).Length
+                        : download.DownloadedBytes;
+
+            download.Progress = 100;
             download.Status =
                 DownloadStatus.Completed;
 
             download.IsDownloading = false;
+            download.IsPaused = false;
             download.CanRetry = false;
             download.ErrorMessage = string.Empty;
             download.Speed = 0;
@@ -279,24 +306,21 @@ public partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            download.IsDownloading = false;
+            download.Speed = 0;
+
             if (download.IsPaused)
             {
                 download.Status =
                     DownloadStatus.Paused;
-
-                download.IsDownloading = false;
-                download.Speed = 0;
 
                 await SaveDownloadAsync(download);
 
                 return;
             }
 
-            download.IsDownloading = false;
             download.Status =
                 DownloadStatus.Cancelled;
-
-            download.Speed = 0;
 
             if (File.Exists(download.FilePath))
             {
@@ -311,6 +335,8 @@ public partial class MainViewModel : ObservableObject
                         download.FilePath);
                 }
             }
+
+            download.ResetProgress();
 
             await SaveDownloadAsync(download);
         }
@@ -355,29 +381,22 @@ public partial class MainViewModel : ObservableObject
     }
 
     private async Task SaveProgressLoopAsync(
-        DownloadItem download)
+        DownloadItem download,
+        CancellationToken cancellationToken)
     {
         try
         {
-            while (!download.CancellationTokenSource
-                       .Token
-                       .IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(
                     TimeSpan.FromSeconds(2),
-                    download.CancellationTokenSource.Token);
-
-                if (download.CancellationTokenSource
-                    .Token
-                    .IsCancellationRequested)
-                {
-                    break;
-                }
+                    cancellationToken);
 
                 await SaveDownloadAsync(download);
             }
         }
         catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
@@ -419,7 +438,6 @@ public partial class MainViewModel : ObservableObject
         }
 
         download.IsPaused = true;
-        download.IsDownloading = false;
         download.Status =
             DownloadStatus.Paused;
 
@@ -429,7 +447,12 @@ public partial class MainViewModel : ObservableObject
 
         download.CancellationTokenSource.Cancel();
 
-        await SaveDownloadAsync(download);
+        if (_downloadTasks.TryGetValue(
+                download,
+                out var task))
+        {
+            await task;
+        }
     }
 
     [RelayCommand]
@@ -457,7 +480,7 @@ public partial class MainViewModel : ObservableObject
 
         await SaveDownloadAsync(download);
 
-        _ = StartDownloadAsync(download);
+        StartDownload(download);
     }
 
     [RelayCommand]
@@ -473,19 +496,30 @@ public partial class MainViewModel : ObservableObject
         }
 
         download.IsPaused = false;
-        download.IsDownloading = false;
-        download.Status =
-            DownloadStatus.Cancelled;
 
         _logger.LogInformation(
-            "Download cancelled: {FileName}",
+            "Download cancellation requested: {FileName}",
             download.FileName);
 
         download.CancellationTokenSource.Cancel();
 
-        download.ResetProgress();
+        if (_downloadTasks.TryGetValue(
+                download,
+                out var task))
+        {
+            await task;
+        }
+        else
+        {
+            download.Status =
+                DownloadStatus.Cancelled;
 
-        await SaveDownloadAsync(download);
+            download.IsDownloading = false;
+
+            download.ResetProgress();
+
+            await SaveDownloadAsync(download);
+        }
     }
 
     [RelayCommand]
@@ -515,7 +549,7 @@ public partial class MainViewModel : ObservableObject
 
         await SaveDownloadAsync(download);
 
-        _ = StartDownloadAsync(download);
+        StartDownload(download);
     }
 
     [RelayCommand]
@@ -528,17 +562,16 @@ public partial class MainViewModel : ObservableObject
                 "Deleting download: {FileName}",
                 download.FileName);
 
-            if (download.IsDownloading ||
-                download.Status == DownloadStatus.Downloading ||
-                download.Status == DownloadStatus.Queued ||
-                download.Status == DownloadStatus.Retrying)
-            {
-                download.IsPaused = false;
-                download.CancellationTokenSource.Cancel();
-            }
+            download.IsPaused = false;
 
-            await _downloadRepository.DeleteAsync(
-                download.Id);
+            download.CancellationTokenSource.Cancel();
+
+            if (_downloadTasks.TryGetValue(
+                    download,
+                    out var task))
+            {
+                await task;
+            }
 
             if (File.Exists(download.FilePath))
             {
@@ -546,15 +579,21 @@ public partial class MainViewModel : ObservableObject
                 {
                     File.Delete(download.FilePath);
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
                     _logger.LogWarning(
+                        ex,
                         "Could not delete file: {FilePath}",
                         download.FilePath);
                 }
             }
 
+            await _downloadRepository.DeleteAsync(
+                download.Id);
+
             Downloads.Remove(download);
+
+            download.CancellationTokenSource.Dispose();
 
             _logger.LogInformation(
                 "Download deleted: {FileName}",
@@ -567,5 +606,41 @@ public partial class MainViewModel : ObservableObject
                 "Failed to delete download: {FileName}",
                 download.FileName);
         }
+    }
+
+    private string GetUniqueFilePath(
+        string directory,
+        string fileName)
+    {
+        var nameWithoutExtension =
+            Path.GetFileNameWithoutExtension(fileName);
+
+        var extension =
+            Path.GetExtension(fileName);
+
+        var filePath =
+            Path.Combine(directory, fileName);
+
+        var counter = 1;
+
+        while (
+            File.Exists(filePath) ||
+            Downloads.Any(d =>
+                string.Equals(
+                    d.FilePath,
+                    filePath,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            var uniqueFileName =
+                $"{nameWithoutExtension} ({counter}){extension}";
+
+            filePath = Path.Combine(
+                directory,
+                uniqueFileName);
+
+            counter++;
+        }
+
+        return filePath;
     }
 }
